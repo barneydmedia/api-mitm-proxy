@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
+const moment = require('moment');
 const rp = require('request-promise-native');
 const sqlite = require('sqlite');
 const SQL = require('sql-template-strings');
@@ -66,7 +67,8 @@ app.use('/', async (req, res) => {
         });
 
         if (error) return;
-        await db.run(SQL`INSERT INTO url_cache (url, response) VALUES (${remoteUrl}, ${remReq})`);
+        const now = moment().format('YYYY-MM-DDTHH-mm-ss');
+        await db.run(SQL`INSERT INTO url_cache (url, response, created, updated) VALUES (${remoteUrl}, ${remReq}, ${now}, ${now});`);
     }
     const storedRes = await db.get(SQL`SELECT response FROM url_cache WHERE url = ${remoteUrl};`);
 
