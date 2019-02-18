@@ -5,6 +5,8 @@
   "scripts": {
     "start": "node ./bin/www"
   },
+  "license": "MIT",
+  "author": "barneydmedia",
   "dependencies": {
     "cookie-parser": "~1.4.3",
     "debug": "~2.6.9",
