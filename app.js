@@ -51,6 +51,7 @@ app.use('/', async (req, res) => {
     const defaultHost = 'business.untappd.com';
     const remoteUrl = `https://${req.headers.remoteurl || defaultHost}${req.originalUrl}`;
     const storedCount = (await db.get(SQL`SELECT COUNT(url) as url_count FROM url_cache WHERE url = ${remoteUrl};`)).url_count;
+    const now = moment().format('YYYY-MM-DDTHH-mm-ss');
 
     if (!storedCount) {
         let error = false;
@@ -67,9 +68,10 @@ app.use('/', async (req, res) => {
         });
 
         if (error) return;
-        const now = moment().format('YYYY-MM-DDTHH-mm-ss');
-        console.log(`Inserting new response from ${url} at ${now}`);
+        console.log(`Inserting new response from ${remoteUrl} at ${now}`);
         await db.run(SQL`INSERT INTO url_cache (url, response, created, updated) VALUES (${remoteUrl}, ${remReq}, ${now}, ${now});`);
+    } else {
+        console.log(`Retrieving response from cache for ${remoteUrl} at ${now}`);
     }
     const storedRes = await db.get(SQL`SELECT response FROM url_cache WHERE url = ${remoteUrl};`);
 
