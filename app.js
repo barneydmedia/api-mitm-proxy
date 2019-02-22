@@ -38,11 +38,16 @@ process.on('unhandledRejection', (e, p) => {
     console.debug(e,p);
 });
 
-function blacklistHeaders(headers) {
+function cleanHeaders(headers) {
     delete headers.host;
     delete headers['postman-token'];
     delete headers.remoteurl;
     delete headers['accept-encoding'];
+
+    Object.keys(headers).forEach(hdr => {
+        const matches = hdr.match(/mitm-.+/gi);
+        if (matches && matches.length > 0) delete headers[hdr];
+    });
 
     return headers;
 }
@@ -52,10 +57,27 @@ app.use('/', async (req, res) => {
     const remoteUrl = `https://${req.headers.remoteurl || defaultHost}${req.originalUrl}`;
     const storedCount = (await db.get(SQL`SELECT COUNT(url) as url_count FROM url_cache WHERE url = ${remoteUrl};`)).url_count;
     const now = moment().format('YYYY-MM-DDTHH-mm-ss');
+    const forceError = req.headers['mitm-error'];
+    const expireCache = req.headers['mitm-decache'];
 
-    if (!storedCount) {
+    if (forceError) {
+        res.status(Number(forceError)).json({
+            error: {
+                status: forceError,
+                message: 'Error forced via request header.',
+            }
+        });
+        return;
+    }
+
+    if (expireCache && storedCount) {
+        console.log(`Clearing old result from cache for ${remoteUrl}`);
+        await db.run(SQL`DELETE FROM url_cache WHERE url = ${remoteUrl}`);
+    }
+
+    if (!storedCount || expireCache) {
         let error = false;
-        const headers = blacklistHeaders({...req.headers});
+        const headers = cleanHeaders({...req.headers});
         const remReq = await rp({
             uri: remoteUrl,
             method: req.method,
