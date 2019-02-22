@@ -41,7 +41,7 @@ process.on('unhandledRejection', (e, p) => {
 function cleanHeaders(headers) {
     delete headers.host;
     delete headers['postman-token'];
-    delete headers.remoteurl;
+    delete headers.remotehost;
     delete headers['accept-encoding'];
 
     Object.keys(headers).forEach(hdr => {
@@ -54,13 +54,14 @@ function cleanHeaders(headers) {
 
 app.use('/', async (req, res) => {
     const defaultHost = 'business.untappd.com';
-    const remoteUrl = `https://${req.headers.remoteurl || defaultHost}${req.originalUrl}`;
+    const remoteUrl = `https://${req.headers.remotehost || defaultHost}${req.originalUrl}`;
     const storedCount = (await db.get(SQL`SELECT COUNT(url) as url_count FROM url_cache WHERE url = ${remoteUrl};`)).url_count;
     const now = moment().format('YYYY-MM-DDTHH-mm-ss');
     const forceError = req.headers['mitm-error'];
     const expireCache = req.headers['mitm-decache'];
 
     if (forceError) {
+        console.log(`Locally returning error code ${forceError}`);
         res.status(Number(forceError)).json({
             error: {
                 status: forceError,
